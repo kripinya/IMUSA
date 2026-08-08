@@ -1,0 +1,74 @@
+# ── DATA (never commit raw meme images or CSVs) ──────────────────────────────
+# Ignore contents of data subdirs, but track .gitkeep to preserve structure
+data/raw/train/*
+data/raw/test/*
+data/processed/*
+data/ocr_cache/*
+!data/raw/train/.gitkeep
+!data/raw/test/.gitkeep
+!data/processed/.gitkeep
+!data/ocr_cache/.gitkeep
+
+# ── MODEL OUTPUTS ─────────────────────────────────────────────────────────────
+outputs/*
+!outputs/.gitkeep
+submissions/*
+!submissions/.gitkeep
+
+# ── PYTHON ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# ── VIRTUAL ENVIRONMENTS ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.conda/
+
+# ── JUPYTER ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── WANDB / MLFLOW ────────────────────────────────────────────────────────────
+wandb/
+mlruns/
+mlflow.db
+
+# ── PYTORCH CHECKPOINTS ───────────────────────────────────────────────────────
+*.pt
+*.pth
+*.ckpt
+*.bin
+
+# ── OS FILES ──────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── LOGS ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── SECRETS / ENV ─────────────────────────────────────────────────────────────
+.env
+.env.*
+secrets.yaml
