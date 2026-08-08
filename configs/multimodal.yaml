@@ -1,0 +1,37 @@
+# ──────────────────────────────────────────────────────────
+# Run 2: Multimodal Fusion (CLIP + MuRIL)
+# ──────────────────────────────────────────────────────────
+# Inherits from base.yaml
+
+run:
+  name: "run2_multimodal"
+  description: "Multimodal fusion: CLIP ViT-B/32 + MuRIL with cross-attention"
+
+model:
+  type: "multimodal"
+  text_encoder:
+    name: "google/muril-base-cased"
+    freeze_layers: 0
+    pooling: "cls"
+    hidden_size: 768
+  image_encoder:
+    name: "openai/clip-vit-base-patch32"
+    freeze_backbone: false
+    hidden_size: 512
+  fusion:
+    type: "cross_attention"  # concatenation, bilinear, cross_attention, gated
+    projection_dim: 256
+    num_attention_heads: 4
+    fusion_dropout: 0.2
+  classifier:
+    hidden_dims: [256, 128]
+    dropout: 0.3
+    activation: "gelu"
+
+training:
+  epochs: 15
+  batch_size: 16
+  learning_rate: 1.0e-5
+  text_lr: 2.0e-5
+  image_lr: 1.0e-5
+  fusion_lr: 5.0e-5

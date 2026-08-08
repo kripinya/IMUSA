@@ -1,0 +1,24 @@
+# ──────────────────────────────────────────────────────────
+# Image-Only Baseline (CLIP ViT)
+# ──────────────────────────────────────────────────────────
+# Inherits from base.yaml — used as a component in ensemble
+
+run:
+  name: "image_only"
+  description: "Image-only sentiment classification using CLIP ViT"
+
+model:
+  type: "image_only"
+  image_encoder:
+    name: "openai/clip-vit-base-patch32"
+    freeze_backbone: false
+    hidden_size: 512
+  classifier:
+    hidden_dims: [256]
+    dropout: 0.3
+    activation: "relu"
+
+training:
+  epochs: 15
+  batch_size: 32
+  learning_rate: 1.0e-4

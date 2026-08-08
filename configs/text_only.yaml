@@ -1,0 +1,25 @@
+# ──────────────────────────────────────────────────────────
+# Run 1: Text-Only Baseline (MuRIL)
+# ──────────────────────────────────────────────────────────
+# Inherits from base.yaml
+
+run:
+  name: "run1_text_only"
+  description: "Text-only sentiment classification using MuRIL"
+
+model:
+  type: "text_only"
+  text_encoder:
+    name: "google/muril-base-cased"
+    freeze_layers: 0  # 0 = fine-tune all
+    pooling: "cls"  # cls, mean, max
+    hidden_size: 768
+  classifier:
+    hidden_dims: [256]
+    dropout: 0.3
+    activation: "relu"
+
+training:
+  epochs: 10
+  batch_size: 16
+  learning_rate: 2.0e-5

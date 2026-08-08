@@ -1,0 +1,78 @@
+# ──────────────────────────────────────────────────────────
+# IMUSA @ FIRE 2026 — Base Configuration
+# ──────────────────────────────────────────────────────────
+
+project:
+  name: "imusa"
+  task: "punjabi_meme_sentiment"
+  num_classes: 4
+  class_names:
+    - "Sarcasm"
+    - "Neutral"
+    - "Offensive"
+    - "Motivational"
+
+data:
+  data_dir: "data"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  ocr_cache_dir: "data/ocr_cache"
+  train_split: 0.8
+  val_split: 0.2
+  image_size: 224
+  max_seq_length: 128
+  num_workers: 4
+
+training:
+  seed: 42
+  epochs: 10
+  batch_size: 16
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  max_grad_norm: 1.0
+  early_stopping_patience: 3
+  fp16: true
+  gradient_accumulation_steps: 1
+
+optimizer:
+  name: "adamw"
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+scheduler:
+  name: "cosine"  # linear, cosine, cosine_with_restarts
+  num_warmup_steps: 100
+
+loss:
+  name: "focal"  # cross_entropy, focal, label_smoothing
+  focal_gamma: 2.0
+  focal_alpha: null  # auto-compute from class frequencies
+  label_smoothing: 0.1
+
+augmentation:
+  image:
+    random_crop: true
+    horizontal_flip: 0.5
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.1
+      hue: 0.05
+    gaussian_blur: 0.1
+    random_erasing: 0.1
+  text:
+    word_dropout: 0.1
+    synonym_replacement: false  # requires Punjabi WordNet
+
+output:
+  output_dir: "outputs"
+  checkpoint_dir: "outputs/checkpoints"
+  log_dir: "outputs/logs"
+  submission_dir: "submissions"
+  save_top_k: 3
+
+wandb:
+  enabled: false
+  project: "imusa-fire2026"
+  entity: null
