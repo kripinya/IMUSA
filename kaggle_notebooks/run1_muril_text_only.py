@@ -63,7 +63,7 @@ print(f"CUDA available: {torch.cuda.is_available()}")
 #   /kaggle/input/imusa-data/           <- if you named the dataset "imusa-data"
 #   /kaggle/input/imusa-punjabi-memes/  <- depends on your dataset name
 
-INPUT_DIR     = "/kaggle/input/imusa-data"          # <-- CHANGE THIS
+INPUT_DIR     = "/kaggle/input/IMUSA"          # <-- CHANGE THIS
 TRAIN_CSV     = os.path.join(INPUT_DIR, "train_punjabi_dataset.csv")
 TEST_CSV      = os.path.join(INPUT_DIR, "Test.csv")
 TRAIN_IMG_DIR = os.path.join(INPUT_DIR, "train", "images")

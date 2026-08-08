@@ -58,11 +58,11 @@ print(f"PyTorch: {torch.__version__}")
 print(f"GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
 
 # ── 2. CONFIG ─────────────────────────────────────────────────────────────────
-INPUT_DIR     = "/kaggle/input/imusa-data"          # <-- UPDATE THIS
-TRAIN_CSV     = os.path.join(INPUT_DIR, "train_punjabi_dataset.csv")
-TEST_CSV      = os.path.join(INPUT_DIR, "Test.csv")
-TRAIN_IMG_DIR = os.path.join(INPUT_DIR, "train", "images")
-TEST_IMG_DIR  = os.path.join(INPUT_DIR, "test", "images")
+INPUT_DIR     = "/kaggle/input/datasets/ananyakarn/imusa-dataset/IMUSA_DATASET"
+TRAIN_CSV     = os.path.join(INPUT_DIR, "Training_Dataset", "train_punjabi_dataset.csv")
+TEST_CSV      = os.path.join(INPUT_DIR, "Testing_Dataset", "Test.csv")
+TRAIN_IMG_DIR = os.path.join(INPUT_DIR, "Training_Dataset", "Training_images")
+TEST_IMG_DIR  = os.path.join(INPUT_DIR, "Testing_Dataset", "Testing_images")
 OUTPUT_DIR    = "/kaggle/working"
 
 TEXT_MODEL    = "google/muril-base-cased"
