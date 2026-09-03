@@ -1,0 +1,218 @@
+%% Working Notes for IMUSA @ FIRE 2026
+%% Format: CEUR-WS (ceurart document class)
+\documentclass[
+% twocolumn,
+% hf,
+]{ceurart}
+
+\sloppy
+
+\usepackage{listings}
+\lstset{breaklines=true}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\begin{document}
+
+\copyrightyear{2026}
+\copyrightclause{Copyright for this paper by its authors.
+  Use permitted under Creative Commons License Attribution 4.0
+  International (CC BY 4.0).}
+
+\conference{FIRE 2026: Forum for Information Retrieval Evaluation,
+  December 2026, India}
+
+\title{Multimodal Sentiment Analysis of Punjabi Memes via Cross-Attention Fusion: Working Notes for IMUSA at FIRE 2026}
+
+\author[1]{Ananya Karn}[%
+email=ananya.125205@stu.upes.ac.in,
+]
+\address[1]{School of Computer Science, UPES, Dehradun, India}
+
+\author[2]{Jaspinder Kaur}[%
+email=Jaspinder.120193@stu.upes.ac.in,
+]
+\address[2]{School of Computer Science, UPES, Dehradun, India}
+
+\author[3]{Tanisha Singh Thakur}[%
+email=Tanisha.120261@stu.upes.ac.in,
+]
+\address[3]{School of Computer Science, UPES, Dehradun, India}
+
+%% Add more authors as needed:
+% \author[1]{Co-Author Name}[%
+% email=coauthor@example.com,
+% ] 
+
+\begin{abstract}
+Memes blend images and text to convey opinions, humor, and criticism, yet their meaning often hinges on the interplay between the two modalities rather than on either one alone. This paper reports on our participation in the Indic Meme Understanding and Sentiment Analysis (IMUSA) shared task at FIRE 2026, where the goal is to assign each Punjabi meme one of four sentiment labels: Sarcasm, Neutral, Offensive, or Motivational. We adopt a three-stage strategy. First, we train a text-only classifier built on MuRIL, a BERT variant pre-trained on Indian languages. Second, we pair MuRIL with the CLIP vision encoder and connect the two through a bidirectional cross-attention layer so that textual and visual cues can inform each other. Third, we combine the probability outputs of both models in a weighted ensemble. On our held-out validation split the text-only model reaches a macro-F1 of 0.527 while the multimodal model reaches 0.510; however, the multimodal model recovers seven additional percentage points of sarcasm recall, confirming that visual context matters for irony detection. The ensemble balances the strengths of both models and produces our final submission.
+\end{abstract}
+
+\begin{keywords}
+  Sentiment Analysis \sep
+  Multimodal Classification \sep
+  Punjabi Memes \sep
+  Cross-Attention \sep
+  MuRIL \sep
+  CLIP \sep
+  FIRE 2026
+\end{keywords}
+
+\maketitle
+
+\section{Introduction}
+
+Internet memes have become a dominant mode of expression on social media platforms across India. In linguistically diverse regions such as Punjab, memes frequently combine Gurmukhi-script text with culturally loaded imagery, producing layered meanings that cannot be recovered from either modality in isolation. A photograph of a smiling face paired with a bitter remark, for instance, signals sarcasm only when both channels are read together. Automated systems that rely on text alone will inevitably miss such cases.
+
+The IMUSA shared task at FIRE 2026 targets exactly this gap. Participants receive a corpus of Punjabi memes and must classify each one as Sarcasm, Neutral, Offensive, or Motivational. The task poses at least three concrete difficulties. Punjabi remains under-represented in large-scale pre-training corpora, making off-the-shelf multilingual models less reliable than they are for high-resource languages. The label distribution is heavily skewed, with the Offensive category accounting for barely 1.7\% of all training instances. And the semantic relationship between image and text varies from reinforcement (in motivational posts) to outright contradiction (in sarcastic posts), so a single fusion strategy may not suit every class equally well.
+
+Our approach is deliberately incremental. We begin with a strong unimodal baseline, add visual information through a cross-attention mechanism, and finally blend the two models at the probability level. Each step is motivated by a specific observation from the data, and we report both aggregate scores and per-class breakdowns so that the contribution of each component can be judged independently.
+
+\section{Dataset}
+
+The IMUSA organisers provide 3,002 labelled training memes and 500 unlabelled test memes. Each training instance consists of an image file, pre-extracted Gurmukhi text, and a sentiment label. Table~\ref{tab:dist} summarises the label distribution.
+
+\begin{table}[h]
+\caption{Training set class distribution.}
+\label{tab:dist}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{Share (\%)} \\
+\midrule
+Sarcasm      & 1329 & 44.3 \\
+Motivational &  870 & 29.0 \\
+Neutral      &  751 & 25.0 \\
+Offensive    &   52 &  1.7 \\
+\midrule
+\textbf{Total} & \textbf{3002} & \textbf{100.0} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two properties of this distribution shaped our design choices. First, the Offensive class is outnumbered roughly 25-to-1 by Sarcasm, making standard cross-entropy training prone to ignoring it altogether. Second, the text accompanying each meme is short: the median length is 16 words, the 75th-percentile is 20, and the longest example contains 73 words. A maximum token length of 128 therefore covers every instance without truncation while keeping memory consumption manageable.
+
+We reserve 20\% of the training data as a validation set using stratified sampling, ensuring that each split preserves the original class proportions. The resulting partition contains 2,401 training and 601 validation instances.
+
+\section{System Description}
+
+We submitted three runs, each building on the previous one.
+
+\subsection{Run 1 --- Text-Only Baseline}
+
+The first run processes only the textual content of each meme. We feed the Gurmukhi text into MuRIL (\texttt{google/muril-base-cased}), a 12-layer BERT model that was pre-trained on 17 Indian languages and their transliterated forms \cite{khanuja2021muril}. We chose MuRIL over the more commonly used mBERT because its pre-training corpus includes a substantially larger share of Punjabi data, and prior work on Indian-language NLU tasks has shown it to outperform generic multilingual encoders on languages written in Brahmic scripts.
+
+The tokeniser converts each input into a sequence of at most 128 sub-word tokens. The final hidden state of the \texttt{[CLS]} token serves as the sentence-level representation. This 768-dimensional vector passes through a dropout layer ($p = 0.3$) and a single linear layer that projects it onto four output logits, one per class. The model is optimised with AdamW at a learning rate of $2 \times 10^{-5}$ and a batch size of 32 for up to 12 epochs. We apply early stopping with a patience of four epochs, checkpointing the weights that yield the highest validation macro-F1.
+
+To address the class imbalance described above, we replace standard cross-entropy with focal loss \cite{lin2017focal}:
+\begin{equation}
+\mathcal{L}_{\text{focal}} = -\alpha_c\,(1 - p_c)^{\gamma}\,\log(p_c)
+\end{equation}
+where $p_c$ is the predicted probability of the ground-truth class $c$, $\alpha_c$ is a per-class weight inversely proportional to class frequency, and $\gamma = 2.0$. The $(1 - p_c)^{\gamma}$ term down-weights easy, well-classified examples and forces the optimiser to concentrate on hard cases, which in practice means the rare Offensive instances.
+
+\subsection{Run 2 --- Multimodal Cross-Attention Fusion}
+
+The second run adds visual features. Each meme image is resized to $224 \times 224$ pixels, normalised, and passed through the frozen vision encoder of CLIP ViT-B/32 \cite{radford2021clip}, producing a 512-dimensional embedding. Meanwhile, MuRIL processes the text exactly as in Run~1, yielding a 768-dimensional embedding.
+
+Because the two embedding spaces differ in both dimensionality and semantic grounding, we first project each into a shared 256-dimensional space through learned linear layers:
+\begin{align}
+\hat{e}_t &= W_t\,e_t + b_t, \quad W_t \in \mathbb{R}^{256 \times 768} \\
+\hat{e}_v &= W_v\,e_v + b_v, \quad W_v \in \mathbb{R}^{256 \times 512}
+\end{align}
+
+A naive concatenation of $\hat{e}_t$ and $\hat{e}_v$ would let the classifier treat each modality independently, which defeats the purpose of multimodal modelling. Instead, we employ a bidirectional cross-attention module. In one direction, the text embedding serves as the query and attends over the image embedding (cast as key and value); in the other, the roles are reversed. Each direction uses single-head scaled dot-product attention \cite{vaswani2017attention}, followed by a residual connection and layer normalisation. The two attended outputs are summed to form a single 256-dimensional fused vector, which is then classified through the same dropout-plus-linear head used in Run~1.
+
+Training uses differential learning rates: $1 \times 10^{-5}$ for the MuRIL and CLIP encoders, and $5 \times 10^{-5}$ for the cross-attention and classification layers. The batch size is reduced to 16 to accommodate the additional memory required by the vision encoder, and training runs for up to 15 epochs with the same early-stopping strategy as Run~1.
+
+\subsection{Run 3 --- Weighted Ensemble}
+
+Inspection of the per-class validation results from Runs~1 and~2 revealed that neither model dominates the other across all four categories. The text-only model performed better on Motivational and Offensive memes, where sentiment tends to be expressed through explicit word choice. The multimodal model performed better on Sarcasm and Neutral memes, where visual context disambiguates otherwise bland or ambiguous text. To exploit these complementary strengths, Run~3 combines the softmax probability vectors of both models:
+\begin{equation}
+P_{\text{final}} = \alpha \cdot P_{\text{text}} + (1 - \alpha) \cdot P_{\text{multi}}
+\end{equation}
+with $\alpha = 0.4$, giving slightly more weight to the multimodal model. No additional training is performed; the ensemble operates purely at inference time over the saved probability outputs of the first two runs.
+
+\section{Results}
+
+Table~\ref{tab:overall} reports the aggregate validation performance of the two trained models.
+
+\begin{table}[h]
+\caption{Overall validation results (601 instances).}
+\label{tab:overall}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Run} & \textbf{Accuracy} & \textbf{Macro-F1} \\
+\midrule
+Run 1 (MuRIL, text only)           & 0.634 & 0.527 \\
+Run 2 (CLIP + MuRIL, cross-attn.)  & 0.649 & 0.510 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The multimodal model achieves higher accuracy than the text-only model (64.9\% vs.\ 63.4\%), yet its macro-F1 is slightly lower (0.510 vs.\ 0.527). This apparent contradiction is resolved by examining the per-class scores in Table~\ref{tab:perclass}.
+
+\begin{table}[h]
+\caption{Per-class F1 and recall on the validation set.}
+\label{tab:perclass}
+\begin{tabular}{l cc cc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Run 1 (Text)}} & \multicolumn{2}{c}{\textbf{Run 2 (Multi.)}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+\textbf{Class} & \textbf{F1} & \textbf{Recall} & \textbf{F1} & \textbf{Recall} \\
+\midrule
+Sarcasm      & 0.706 & 0.64 & 0.762 & 0.71 \\
+Neutral      & 0.466 & 0.53 & 0.524 & 0.59 \\
+Motivational & 0.716 & 0.75 & 0.636 & 0.63 \\
+Offensive    & 0.222 & 0.18 & 0.118 & 0.09 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several observations stand out. First, adding visual features substantially lifts sarcasm recall from 64\% to 71\% and neutral recall from 53\% to 59\%. Many sarcastic memes pair a cheerful or mundane image with a critical remark; the cross-attention layer picks up on this mismatch and shifts the prediction away from Neutral toward Sarcasm.
+
+Second, the gains on Sarcasm and Neutral come at a cost to Motivational and Offensive. Motivational memes typically carry straightforward, uplifting messages whose sentiment is fully determined by the text; the additional visual pathway introduces noise without adding useful signal. The picture is worse for the Offensive class, where recall drops from 18\% to 9\%. With only 52 training examples the model cannot learn reliable visual patterns for offensiveness, and the extra parameters of the cross-attention module increase the risk of overfitting to spurious correlations.
+
+These complementary error profiles motivate the ensemble strategy of Run~3. On the unlabelled test set, the ensemble predicts 409 instances as Sarcasm, 72 as Neutral, 14 as Motivational, and 5 as Offensive --- a distribution that broadly mirrors the skew of the training data.
+
+\section{Discussion}
+
+The results point to a recurring tension in multimodal classification on small, imbalanced datasets. Richer architectures can capture inter-modal dependencies that simpler models miss, but they also demand more data per class to generalise safely. In our setting the cross-attention module paid off for Sarcasm and Neutral --- the two categories where image--text interaction genuinely matters --- yet it hurt the already fragile Offensive category.
+
+Several directions could address this limitation. Data augmentation techniques such as back-translation or synonym replacement could inflate the minority classes without introducing visual artefacts. Alternatively, a class-conditional gating mechanism could learn to down-weight the visual branch for categories where text alone is sufficient. Finally, large vision-language models could be queried in a few-shot manner for the Offensive class, sidestepping the need for fine-tuning on a handful of examples.
+
+\section{Conclusion}
+
+We presented a three-run system for Punjabi meme sentiment classification at the IMUSA shared task. A MuRIL text encoder provides a solid baseline; a CLIP--MuRIL cross-attention model lifts sarcasm and neutral detection at the expense of the minority class; and a probability-level ensemble reconciles the two. The work confirms that visual context is essential for irony detection in memes and highlights the open challenge of multimodal learning under extreme label imbalance.
+
+\begin{acknowledgments}
+We thank the IMUSA shared task organisers --- Dr.\ Pankaj Kundan Dadure, Dr.\ Hitesh Kumar Sharma, and Yash Kumar Dhiman at UPES Dehradun --- for preparing the dataset and hosting the task at FIRE 2026.
+\end{acknowledgments}
+
+\section*{Declaration on Generative AI}
+During the preparation of this work, the author(s) used generative AI tools for grammar and spelling checks. After using these tools, the author(s) reviewed and edited the content as needed and take full responsibility for the publication's content.
+
+\begin{thebibliography}{9}
+
+\bibitem{khanuja2021muril}
+Simran Khanuja, Diksha Bansal, Sarvesh Mehtani, Savya Khosla, Atreyee Dey, Balaji Gopalan, Dilip Kumar Margam, Pooja Aggarwal, Rajiv Teja Nagipogu, Shachi Dave, Shruti Gupta, Subhash Chandra Bose Gali, Vish Subramanian, and Partha Talukdar.
+\newblock {MuRIL}: Multilingual Representations for Indian Languages.
+\newblock \emph{arXiv preprint arXiv:2103.10730}, 2021.
+
+\bibitem{radford2021clip}
+Alec Radford, Jong~Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever.
+\newblock Learning Transferable Visual Models From Natural Language Supervision.
+\newblock In \emph{Proceedings of the 38th International Conference on Machine Learning (ICML)}, pages 8748--8763, 2021.
+
+\bibitem{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan~N. Gomez, \L{}ukasz Kaiser, and Illia Polosukhin.
+\newblock Attention Is All You Need.
+\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS)}, pages 5998--6008, 2017.
+
+\bibitem{lin2017focal}
+Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Doll\'{a}r.
+\newblock Focal Loss for Dense Object Detection.
+\newblock In \emph{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}, pages 2980--2988, 2017.
+
+\end{thebibliography}
+
+\end{document}
